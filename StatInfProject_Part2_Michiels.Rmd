@@ -1,0 +1,144 @@
+---
+title: 'Statistical Inference Course Project - Part II'
+author: "Steven Michiels"
+date: "4/17/2020"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r echo=FALSE}
+suppressMessages(require(ggplot2))
+suppressMessages(require(GGally))
+suppressMessages(require(grid))
+suppressMessages(require(gridExtra))
+```
+
+
+# Exploratory data analysis
+We load the data and convert the dose predictor to factors.
+```{r echo=FALSE}
+data("ToothGrowth")
+suppressMessages(attach(ToothGrowth))
+names(ToothGrowth)
+ToothGrowth$dose<-as.factor(ToothGrowth$dose)
+```
+We create a __boxplot and violinplot__ for the __tooth length in function of the used supplement type__. The __OJ__ supplement __appears__ to be __associated with a higher tooth length__, although statistical significance is yet to be shown. The __OJ supplement type__ distribution appears to be __somewhat skewed__.
+```{r}
+g1a=ggplot(ToothGrowth,aes(x = supp,y=len)) 
+g1a=g1a + geom_violin(color="blue", fill="white", draw_quantiles = c(0.25, 0.5, 0.75),scale = "count")
+g1a=g1a+xlab("supplement")+ylab("length")
+
+g1b=ggplot(ToothGrowth,aes(x = supp,y=len)) 
+g1b=g1b + geom_boxplot(color="blue", fill="white")
+g1b=g1b+xlab("supplement")+ylab("length")
+
+grid.arrange(g1b,g1a,nrow=1,top="Boxplot and violinplot for the tooth length per supplement type")
+```
+
+We create a __boxplot__ for the __tooth length in function of the supplement__, but now we use __supgroups per dose level__. 
+We now see that the __association of tooth length with the supplement type may only be present for the two lower dose levels__, i.e. .5 mg/day and 1.0 mg/day.
+
+```{r}
+g2=ggplot(ToothGrowth,aes(x = factor(dose),y=len, fill=supp)) 
+g2=g2 + geom_boxplot()
+#g=g+geom_smooth(method="lm", formula=y~x)
+g2=g2+xlab("dose [mg/day]")+ylab("length")
+plot(g2)
+```
+
+We create a __boxplot and violinplot__ for the __tooth length in function of the used dose__. __Increased dose__ of the supplement __appears__ to be associated with an __increased tooth length__.  
+```{r}
+
+g3a=ggplot(ToothGrowth,aes(x = factor(dose),y=len)) 
+g3a=g3a + geom_violin(color="blue", fill="white", draw_quantiles = c(0.25, 0.5, 0.75),scale = "count")
+g3a=g3a+xlab("supplement")+ylab("length")
+
+g3b=ggplot(ToothGrowth,aes(x = factor(dose),y=len)) 
+g3b=g3b + geom_boxplot(color="blue", fill="white")
+g3b=g3b+xlab("supplement")+ylab("length")
+
+grid.arrange(g3b,g3a,nrow=1,top="Boxplot and violinplot for the tooth length per supplement type")
+```
+
+We create a __boxplot__ for the __tooth length in function of the used dose, but now we make __subgroups per supplement type__. We now see a rather __clear association between the dose level and the tooth length__, although this association appears to be weaker at the higher dose levels for the OJ supplement type. 
+
+```{r}
+g3=ggplot(ToothGrowth,aes(x = supp,y=len,fill=factor(dose)) )
+g3=g3 + geom_boxplot()
+g3=g3+xlab("supplement")+ylab("length")
+plot(g3)
+```
+
+# Basic summary of the data.
+```{r}
+summary(ToothGrowth)
+```
+
+# Hypothesis testing
+
+We create different subgroups to perform different subgroup analyses.
+```{r echo=FALSE}
+suppOJ<-subset(ToothGrowth,supp=="OJ")
+suppVC<-subset(ToothGrowth,supp=="VC")
+
+dose05<-subset(ToothGrowth,dose==.5)
+dose10<-subset(ToothGrowth,dose==1)
+dose20<-subset(ToothGrowth,dose==2)
+
+dose05VC<-subset(dose05,supp=="VC")
+dose05OJ<-subset(dose05,supp=="OJ")
+dose10VC<-subset(dose10,supp=="VC")
+dose10OJ<-subset(dose10,supp=="OJ")
+dose20VC<-subset(dose20,supp=="VC")
+dose20OJ<-subset(dose20,supp=="OJ")
+
+```
+
+First, we perform a two-sided t-test of a difference in mean tooth length between the different dose levels. The __tooth length__ is __clearly associated with the dose level__: at a __significance level of 5%__, the mean tooth length is different between all the dose levels.
+
+```{r}
+t_dose05_10=t.test(dose05$len,dose10$len)
+t_dose10_20=t.test(dose10$len,dose20$len)
+t_dose05_20=t.test(dose05$len,dose20$len)
+t_dose05_10$p.value
+t_dose10_20$p.value
+t_dose05_20$p.value
+```
+
+
+Next, we perform a two-sided t-test of a difference in mean tooth length between the two supplement types.
+The __tooth length for supp OJ__ shows a __trend towards a higher mean__ than for supp VC, with a p-value only slightly above a 5% significance level and with a 95* CI barely including zero as the difference in mean. Nevertheless, at a __significance level of 5%__ we still __fail to reject the null hypothesis of equal mean length__. 
+```{r}
+t_supp=t.test(suppOJ$len,suppVC$len)
+t_supp
+```
+
+Finally, we perform a two-sided t-test of a difference in mean tooth length between the supplement types but at each dose level separately. For the __lower dose levels 0.5 mg/day and 1.0 mg/day__, we find an __influence of the supplement type on the mean tooth length__, at a significance level of 5%, __but this influence disappears at the highest dose level__.
+```{r}
+t_dose05_supp=t.test(dose05VC$len,dose05OJ$len)
+t_dose10_supp=t.test(dose10VC$len,dose10OJ$len)
+t_dose20_supp=t.test(dose20VC$len,dose20OJ$len)
+t_dose05_supp$p.value
+t_dose10_supp$p.value
+t_dose20_supp$p.value
+```
+
+
+# Conclusions and assumptions
+## Conclusion
+* The dose level has a significant effect on the tooth length.
+* The supplement type alone does not affect the tooth length. Only at the two lowest dose levels, the supplement type has a significant effect on the tooth length. 
+
+## Assumptions
+
+* Independent and identically distributed samples
+* Unskewed, mount-shaped distributions (requirement for t-test)
+
+
+
